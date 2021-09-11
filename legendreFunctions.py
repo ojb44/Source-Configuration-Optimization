@@ -1,4 +1,4 @@
-#Needed to have a compileable legendre derivative
+#Needed to have a compileable legendre derivative, compatible with numba
 
 import ctypes
 from numba.extending import get_cython_function_address
@@ -15,10 +15,12 @@ eval_legendre_float64_fn = functype(addr)
  
 @njit
 def numba_eval_legendre_float64(l,x):
+    #gives the Legendre polynomial P_l(x)
     return eval_legendre_float64_fn(l, x)
 
 @njit
 def legendre_deriv(l,x,h): 
     #x can be array
-    #use central difference formula
+    #uses central difference formula for find the derivative of P_l(x)
+    #h should be a small float of order of 1e-5
     return (numba_eval_legendre_float64(l,x+h)-numba_eval_legendre_float64(l,x-h))/(2*h)

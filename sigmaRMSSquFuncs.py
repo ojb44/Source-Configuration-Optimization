@@ -8,20 +8,30 @@ from numba import njit
 
 @njit
 def gLSqu(l, configVector, numSources):
+    """
+
+    Parameters
+    ----------
+    l : int
+        mode number.
+    configVector : array
+        array describing the configuration - in order of all theta values, then phi, then strengths.
+    numSources : int
+        number of sources.
+
+    Returns
+    -------
+    float
+        G_l^2, as defined in the paper.
+
+    """
     sumGrid=np.zeros((numSources,numSources))
     for i in range(numSources):
         for j in range(numSources):
-            #sumGrid[i][j]=cosAngleBetween(configVector[i],configVector[j],configVector[i+numSources],configVector[j+numSources])
             sumGrid[i][j]=legendreFunctions.numba_eval_legendre_float64(l,cosAngleBetween(configVector[i],configVector[j],configVector[i+numSources],configVector[j+numSources]))       
-    
-    #legArr=np.array([numba_eval_legendre_float64(val,l) for val in arr])
-    #sumGrid=np.array([])
-    #poly=legendre(l)
-    #sumGrid=np.polyval(poly,sumGrid)
     
     strengthArr=configVector[2*numSources:]
     strengthGrid=np.outer(strengthArr, strengthArr)
-    
     
     sumGrid=sumGrid*strengthGrid
     
@@ -33,6 +43,25 @@ def gLSqu(l, configVector, numSources):
 
 @njit
 def sigmaLSqu(l,configVector,numSources,aLValues):
+    """
+
+    Parameters
+    ----------
+    l : int
+        mode number.
+    configVector : array 
+        array describing the configuration - in order of all theta values, then phi, then strengths.
+    numSources : int
+        number of sources.
+    aLValues : array
+        the coefficients a_L in the Legendre expansion of intensity due to a single source.
+
+    Returns
+    -------
+    float
+        sigma_l ^ 2 as defined in the paper.
+
+    """
     aLVal=aLValues[l]
     gLVal=gLSqu(l,configVector,numSources)
     return (aLVal**2 * gLVal) / (2*l+1)
@@ -40,6 +69,25 @@ def sigmaLSqu(l,configVector,numSources,aLValues):
 
 @njit
 def sigmaRMSSqu(configVector,numSources,aLValues,numLTerms):
+    """
+
+    Parameters
+    ----------
+    configVector : array
+        array describing the configuration - in order of all theta values, then phi, then strengths.
+    numSources : int
+        number of sources.
+    aLValues : array
+        the coefficients a_L in the Legendre expansion of intensity due to a single source.
+    numLTerms : int
+        number of terms kept in Legendre expansion.
+
+    Returns
+    -------
+    float
+        sigma_{rms}^2, the rms squared nonuniformity in intensity.
+
+    """
     sigmaLVals=np.arange(1.0, numLTerms+1)
     for i in range(numLTerms):
         sigmaLVals[i]=sigmaLSqu(i+1,configVector,numSources,aLValues)
@@ -47,16 +95,30 @@ def sigmaRMSSqu(configVector,numSources,aLValues,numLTerms):
 
 @njit
 def gLSquGradS(l, configVector, numSources, sourceIndex):
+    """
+
+    Parameters
+    ----------
+    l : int
+        mode number.
+    configVector : array 
+        array describing the configuration - in order of all theta values, then phi, then strengths.
+    numSources : int
+        number of sources.
+    sourceIndex : int
+        index of source which is being varied
+    Returns
+    -------
+    float
+        the partial derivative of G_l^2 with respect to the strength of the source labelled by sourceIndex
+
+    """
     sumGrid=np.zeros((numSources,numSources))
     for i in range(numSources):
         for j in range(numSources):
             #sumGrid[i][j]=cosAngleBetween(configVector[i],configVector[j],configVector[i+numSources],configVector[j+numSources])
             sumGrid[i][j]=legendreFunctions.numba_eval_legendre_float64(l,cosAngleBetween(configVector[i],configVector[j],configVector[i+numSources],configVector[j+numSources]))       
     
-    #legArr=np.array([numba_eval_legendre_float64(val,l) for val in arr])
-    #sumGrid=np.array([])
-    #poly=legendre(l)
-    #sumGrid=np.polyval(poly,sumGrid)
     
     strengthArr=configVector[2*numSources:]
     strengthGrid=np.outer(strengthArr, strengthArr)
@@ -74,6 +136,25 @@ def gLSquGradS(l, configVector, numSources, sourceIndex):
 
 @njit
 def gLSquGradTheta(l, configVector, numSources, sourceIndex):
+    """
+
+    Parameters
+    ----------
+    l : int
+        mode number.
+    configVector : array 
+        array describing the configuration - in order of all theta values, then phi, then strengths.
+    numSources : int
+        number of sources.
+    sourceIndex : int
+        index of source which is being varied
+    Returns
+    -------
+    float
+        the partial derivative of G_l^2 with respect to the theta position of the source labelled by sourceIndex
+
+    """
+    
     sumArr=np.zeros(numSources)
     i=sourceIndex
     for j in range(numSources):
@@ -97,6 +178,24 @@ def gLSquGradTheta(l, configVector, numSources, sourceIndex):
 
 @njit
 def gLSquGradPhi(l, configVector, numSources, sourceIndex):
+    """
+
+    Parameters
+    ----------
+    l : int
+        mode number.
+    configVector : array 
+        array describing the configuration - in order of all theta values, then phi, then strengths.
+    numSources : int
+        number of sources.
+    sourceIndex : int
+        index of source which is being varied
+    Returns
+    -------
+    float
+        the partial derivative of G_l^2 with respect to the phi position of the source labelled by sourceIndex
+
+    """
     sumArr=np.zeros(numSources)
     i=sourceIndex
     for j in range(numSources):
@@ -117,6 +216,25 @@ def gLSquGradPhi(l, configVector, numSources, sourceIndex):
 
 @njit
 def sigmaLSquGrad(l,configVector,numSources,aLValues):
+    """
+
+    Parameters
+    ----------
+    l : int
+        mode number.
+    configVector : TYPE
+        array describing the configuration - in order of all theta values, then phi, then strengths.
+    numSources : int
+        number of sources.
+    aLValues : array of floats
+        the coefficients a_L in the Legendre expansion of intensity due to a single source.
+
+    Returns
+    -------
+    derivArr : array of floats
+        the gradient vector of sigma_l^2 in the space of the configuration vector.
+
+    """
     derivArr=np.zeros(3*numSources)
     for i in range(numSources):
         derivArr[i]=gLSquGradTheta(l, configVector, numSources, i)
@@ -128,7 +246,26 @@ def sigmaLSquGrad(l,configVector,numSources,aLValues):
     return derivArr
 
 @njit
-def sigmaRMSSquGrad(configVector,numSources,aLValues,numLTerms):    
+def sigmaRMSSquGrad(configVector,numSources,aLValues,numLTerms):  
+    """
+
+    Parameters
+    ----------
+    l : int
+        mode number.
+    configVector : TYPE
+        array describing the configuration - in order of all theta values, then phi, then strengths.
+    numSources : int
+        number of sources.
+    aLValues : array of floats
+        the coefficients a_L in the Legendre expansion of intensity due to a single source.
+
+    Returns
+    -------
+    gradArr : array of floats
+        the gradient vector of sigma_{rms}^2 in the space of the configuration vector.
+
+    """
     gradArr=np.zeros(3*numSources)
     for l in range(numLTerms):
         gradArr+=sigmaLSquGrad(l,configVector,numSources,aLValues)
