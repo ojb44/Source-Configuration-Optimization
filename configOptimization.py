@@ -19,9 +19,9 @@ class SingleSource:
     def sourceTuple(self):
         return (self.theta,self.phi,self.strength)
         
-class Configuration:
+class Configuration: #rename to SourceConfiguration
     def __init__(self, numSources, sourceType, sourceArray):
-        if numSources==np.size(sourceArray):
+        if numSources==np.size(sourceArray):  #kept in as check (that got right num of sources in array!)
             #self.sourceArray=sourceArray
             self.numSources=numSources
             self.sourceType=sourceType
@@ -29,6 +29,8 @@ class Configuration:
             
         else:
             raise ValueError('Number of sources did not match size of array')
+    
+    #have seperate init from configVector
             
     def configVectorFromSourceArray(self,sourceArray):
         thetas=list(map(lambda x: x.theta, sourceArray))
@@ -53,19 +55,16 @@ class Configuration:
         return sigmaRMSSquFuncs.sigmaRMSSquGrad(self.configVector,self.numSources,self.sourceType.aLVals,numLTerms)
 
     def sigmaRMSPercent(self,numLTerms):
-        return 100*np.sqrt(self.sigmaRMSSqu())
+        return 100*np.sqrt(self.sigmaRMSSqu(numLTerms))
 
     def stabilityTest(self,numLTerms,numPerturbations,stdTheta,stdPhi,stdStr):
         return imperfectionFuncs.stabilityTest(self.configVector,self.numSources,self.sourceType.aLVals,numLTerms,numPerturbations,stdTheta,stdPhi,stdStr)
+    
+    def minimizerFunction(self, configVector, numLTerms): #must take in the config vector separately so that it works with the basinhopping optimization function
+        return sigmaRMSSquFuncs.sigmaRMSSqu(configVector,self.numSources,self.sourceType.aLVals,numLTerms), sigmaRMSSquFuncs.sigmaRMSSquGrad(configVector,self.numSources,self.sourceType.aLVals,numLTerms)
 
-pointSource484=SourceType(aLValueFuncs.aLValues484)
-numSources=2
-numLTerms=30
-source1=SingleSource(0,0,1)
-source2=SingleSource(1,0,2)
-config=Configuration(numSources,pointSource484,np.array([source1,source2]))
 
-class ConfigurationRDOF(Configuration):
+class ConfigurationRDOF(Configuration): #rename
     def __init__(self, numSources, sourceType, halfSourceArray):
         if int(numSources/2)==np.size(halfSourceArray):
             self.numSources=numSources
@@ -112,13 +111,15 @@ class ConfigurationRDOF(Configuration):
     def sigmaRMSSquGrad(self,numLTerms):
         return rdofSigmaRMSSquFuncs.sigmaRMSSquGradRDOF(self.configVector,int(self.numSources/2),self.sourceType.aLVals,numLTerms)
         
+    #sigmaRMSPercent func
 
+    def minimizerFunction(self, configVector, numLTerms):
+        return rdofSigmaRMSSquFuncs.sigmaRMSSquRDOF(configVector,int(self.numSources/2),self.sourceType.aLVals,numLTerms),rdofSigmaRMSSquFuncs.sigmaRMSSquGradRDOF(configVector,int(self.numSources/2),self.sourceType.aLVals,numLTerms)
 
 
 class Optimization:
     def __init__(self,configuration,gtol=1e-5,temp=0.0001,numLTerms=30,maxStepSize=0.45):
         self.configuration=configuration
-        self.localMinKwargs={"method":"L-BFGS-B", "jac":True, "options":{'gtol':gtol, 'disp':False}}
         self.gtol=gtol
         self.temp=temp
         self.numLTerms=numLTerms
@@ -126,44 +127,35 @@ class Optimization:
         self.mytakestep=customOptimizerSettings.MyTakeStep(self.configuration.numSources,stepsize=maxStepSize)
         self.mytakestepRDOF=customOptimizerSettings.MyTakeStepRDOF(int(self.configuration.numSources/2),stepsize=maxStepSize)
         self.myboundsRDOF=customOptimizerSettings.MyBounds(int(self.configuration.numSources/2))
+        self.localMinKwargs={"method":"L-BFGS-B", "jac":True, "args":(self.numLTerms),"options":{'gtol':self.gtol, 'disp':False}}
+
+    # #@njit
+    # def minimizerFunction(self,configVector):
+    #     #return self.configuration.sigmaRMSSqu(self.numLTerms),self.configuration.sigmaRMSSquGrad(self.numLTerms)
+    #     return sigmaRMSSquFuncs.sigmaRMSSqu(configVector,self.configuration.numSources,self.configuration.sourceType.aLVals,self.numLTerms), sigmaRMSSquFuncs.sigmaRMSSquGrad(configVector,self.configuration.numSources,self.configuration.sourceType.aLVals,self.numLTerms)
+        
+    # def minimizerFunctionRDOF(self,configVector):
+    #     return rdofSigmaRMSSquFuncs.sigmaRMSSquRDOF(configVector,int(self.configuration.numSources/2),self.configuration.sourceType.aLVals,self.numLTerms),rdofSigmaRMSSquFuncs.sigmaRMSSquGradRDOF(configVector,int(self.configuration.numSources/2),self.configuration.sourceType.aLVals,self.numLTerms)
+    # #figure out way to put minimizerFunctions in the configuration objects - pass the numLTerms as an argument
     
-    #@njit
-    def minimizerFunction(self,configVector):
-        #return self.configuration.sigmaRMSSqu(self.numLTerms),self.configuration.sigmaRMSSquGrad(self.numLTerms)
-        return sigmaRMSSquFuncs.sigmaRMSSqu(configVector,self.configuration.numSources,self.configuration.sourceType.aLVals,self.numLTerms), sigmaRMSSquFuncs.sigmaRMSSquGrad(configVector,self.configuration.numSources,self.configuration.sourceType.aLVals,self.numLTerms)
-        
-    def minimizerFunctionRDOF(self,configVector):
-        return rdofSigmaRMSSquFuncs.sigmaRMSSquRDOF(configVector,int(self.configuration.numSources/2),self.configuration.sourceType.aLVals,numLTerms),rdofSigmaRMSSquFuncs.sigmaRMSSquGradRDOF(configVector,int(self.configuration.numSources/2),self.configuration.sourceType.aLVals,numLTerms)
-        
     
     def optimize(self, numIterations):
-        if isinstance(self.configuration, ConfigurationRDOF)==False:
-            result=basinhopping(self.minimizerFunction,self.configuration.configVector,minimizer_kwargs=self.localMinKwargs,niter=numIterations,T=self.temp,disp=True,accept_test=self.mybounds,take_step=self.mytakestep)
-            self.configuration.configVector=np.array(list(result.x))
-            return self.configuration.configVector
-        else:
-            result=basinhopping(self.minimizerFunctionRDOF,self.configuration.configVector,minimizer_kwargs=self.localMinKwargs,niter=numIterations,T=self.temp,disp=True,accept_test=self.myboundsRDOF,take_step=self.mytakestepRDOF)
-            self.configuration.configVector=np.array(list(result.x))
-            return self.configuration.configVector
-
-# optimizer=Optimization(config)
-# print(optimizer.minimizerFunction(config.configVector))
-# optimizer.optimize(2)
-
-# print(optimizer.configuration.sourceTuples())
-# print(config.sourceTuples())
+        result=basinhopping(self.configuration.minimizerFunction,self.configuration.configVector,minimizer_kwargs=self.localMinKwargs,niter=numIterations,T=self.temp,disp=True,accept_test=self.mybounds,take_step=self.mytakestep)
+        self.configuration.configVector=np.array(list(result.x))
+        return self.configuration.configVector
+    
+    # def optimize(self, numIterations):
+    #     if isinstance(self.configuration, ConfigurationRDOF)==False:
+    #         result=basinhopping(self.minimizerFunction,self.configuration.configVector,minimizer_kwargs=self.localMinKwargs,niter=numIterations,T=self.temp,disp=True,accept_test=self.mybounds,take_step=self.mytakestep)
+    #         self.configuration.configVector=np.array(list(result.x))
+    #         return self.configuration.configVector
+    #     else:
+    #         result=basinhopping(self.minimizerFunctionRDOF,self.configuration.configVector,minimizer_kwargs=self.localMinKwargs,niter=numIterations,T=self.temp,disp=True,accept_test=self.myboundsRDOF,take_step=self.mytakestepRDOF)
+    #         self.configuration.configVector=np.array(list(result.x))
+    #         return self.configuration.configVector
 
 
-rdofConfig=ConfigurationRDOF(4,pointSource484,np.array([source1,source2]))
 
-optimizer=Optimization(rdofConfig)
-#print(optimizer.minimizerFunctionRDOF(config.configVector))
-#optimizer.optimize(2)
-
-#print(optimizer.configuration.sourceTuples())
-print(config.sourceTuples())
-print(rdofConfig.sourceTuples())
-print(rdofConfig.fullSourceTuples())
 
 
 
