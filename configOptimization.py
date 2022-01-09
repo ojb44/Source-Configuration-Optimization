@@ -178,7 +178,7 @@ class ConfigurationRDOF(Configuration): #rename
 
 
 class Optimization:
-    def __init__(self,configuration,gtol=1e-5,temp=0.0001,numLTerms=30,maxStepSize=0.45):
+    def __init__(self,configuration,gtol=1e-5,temp=0.0001,numLTerms=40,maxStepSize=0.45):
         self.configuration=configuration
         self.gtol=gtol
         self.temp=temp
