@@ -106,4 +106,4 @@ def stabilityTest(configVector,numSources,aLValues,numLTerms,numPerts,stdTheta,s
     mean=sigmaRMSVals.mean()
     std=sigmaRMSVals.std()
     minVal=np.sqrt(sigmaRMSSquFuncs.sigmaRMSSqu(configVector,numSources,aLValues,numLTerms))
-    return mean/minVal,std/minVal   #note that this has changed from the original definition I had
+    return mean/minVal,std   #note that this has changed from the original definition I had
