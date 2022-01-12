@@ -1,9 +1,9 @@
-import sigmaRMSSquFuncs
-import customOptimizerSettings
-from aLValueFuncs import *
-from aLPrime_OverTime import *
-import imperfectionFuncs
-import rdofSigmaRMSSquFuncs
+import OptimizationFunctions.sigmaRMSSquFuncs
+import OptimizationFunctions.customOptimizerSettings
+from OptimizationFunctions.aLValueFuncs import *
+from OptimizationFunctions.aLPrime_OverTime import *
+import OptimizationFunctions.imperfectionFuncs
+import OptimizationFunctions.rdofSigmaRMSSquFuncs
 import numpy as np
 from scipy.optimize import basinhopping
 
